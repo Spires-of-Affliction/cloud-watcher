@@ -1,0 +1,26 @@
+{
+  "name": "cloud-watcher",
+  "version": "1.0.0",
+  "description": "Cloud storage folder watcher",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Spires-of-Affliction/cloud-watcher.git"
+  },
+  "author": "Denis Onder (denis_onder@protonmail.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Spires-of-Affliction/cloud-watcher/issues"
+  },
+  "homepage": "https://github.com/Spires-of-Affliction/cloud-watcher#readme",
+  "devDependencies": {
+    "eslint": "^7.2.0"
+  },
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "fs-extra": "^9.0.1"
+  }
+}
