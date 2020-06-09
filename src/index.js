@@ -44,6 +44,6 @@ function backup() {
 console.log('Watcher started\nWaiting for backup calls...');
 
 watch(folderPath, () => {
-  backup();
   ws.send('cloud::modified');
+  backup();
 });
