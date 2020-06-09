@@ -1,5 +1,6 @@
 const WebSocket = require('ws');
-const { copy, watch, readdirSync, remove } = require('fs-extra');
+const chokidar = require('chokidar');
+const { copy, readdirSync, removeSync } = require('fs-extra');
 
 require('dotenv').config(); // Load .env into process.env
 
@@ -33,7 +34,7 @@ function backup() {
     const delimiter = directories.length - backupAmount;
 
     for (let i = 0; i < delimiter; i++)
-      remove(`${backupPath}\\${directories[i]}`, (e) => console.log(e));
+      removeSync(`${backupPath}\\${directories[i]}`);
   }
 
   copy(folderPath, `${backupPath}\\${generateName()}`, () =>
@@ -43,7 +44,11 @@ function backup() {
 
 console.log('Watcher started\nWaiting for backup calls...');
 
-watch(folderPath, () => {
-  ws.send('cloud::modified');
-  backup();
+chokidar.watch(folderPath, { ignoreInitial: true }).on('all', (event, file) => {
+  file = file.replace(`${folderPath}\\`, '');
+  // console.log(event, file);
+
+  if (/(.lnk)|(.tmp)|(.TMP)/g.test(file)) return;
+  ws.send(`${event}::${file}`);
+  // backup();
 });
