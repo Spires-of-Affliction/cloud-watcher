@@ -1,7 +1,6 @@
 const WebSocket = require('ws');
 const chokidar = require('chokidar');
 const { copy } = require('fs-extra');
-// const { copy, readdirSync, removeSync } = require('fs-extra');
 
 require('dotenv').config(); // Load .env into process.env
 
@@ -9,48 +8,85 @@ const {
   FOLDER_PATH: folderPath,
   BACKUP_PATH: backupPath,
   SERVER_URL: url,
-  // BACKUP_AMOUNT: backupAmount,
 } = process.env;
 
-const ws = new WebSocket(url);
+let ws = new WebSocket(url);
+let pool = [];
+
+ws.onopen = () => console.log('Established connection with the Discord bot.\n');
+
+const eventSymbol = (event) => {
+  switch (event) {
+    case 'unlink': // Removed
+    case 'unlinkDir':
+      return '-';
+    case 'add': // Created
+    case 'addDir':
+      return '+';
+    default:
+      return '@';
+  }
+};
+
+function checkIfPooled(event, file) {
+  if (pool.length === 0) return false;
+
+  console.log(pool);
+
+  const name = `${eventSymbol(event)} ${file}`;
+  const index = pool.findIndex((v) => v === name);
+
+  if (index === -1) return false;
+
+  pool.splice(index, 1);
+
+  return true;
+}
 
 function generateName(stamp = Date.now()) {
   const d = new Date(stamp);
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}_${d.getHours()}-${d.getMinutes()}-${d.getSeconds()}-${d.getMilliseconds()}`;
 }
 
-// const dirNameToDate = (dirName) => {
-//   const [date, time] = dirName.split('_');
-
-//   return new Date(generateName(`${date}-${time.split('-').join(':')}`));
-// };
-
 function backup() {
   // TODO: Implement removal of old backups
-  // Get old backup directories and sort by date
-  //   const directories = readdirSync(backupPath)
-  //     .filter((d) => d !== 'desktop.ini')
-  //     .sort((a, b) => dirNameToDate(b) - dirNameToDate(a));
-
-  //   if (directories.length > backupAmount) {
-  //     const delimiter = directories.length - backupAmount;
-
-  //     for (let i = 0; i < delimiter; i++)
-  //       removeSync(`${backupPath}\\${directories[i]}`);
-  //   }
-
   const path = `${backupPath}\\${generateName()}`;
 
   copy(folderPath, path, () => console.log(`Backup complete:\n${path}`));
 }
 
-console.log('Watcher started\nWaiting for backup calls...');
+console.log('Watcher started\nWaiting for backup calls...\n');
 
 chokidar.watch(folderPath, { ignoreInitial: true }).on('all', (event, file) => {
   file = file.replace(`${folderPath}\\`, '');
 
-  if (/(.lnk)|(.tmp)|(.TMP)/g.test(file)) return;
+  const isPooled = checkIfPooled(event, file);
+
+  if (isPooled) return;
+
+  if (/(.lnk)|(.tmp)|(.TMP)|(.mega)|(Rubbish)/g.test(file)) return; // Break if unwanted file
+  console.log(event, file);
+
   ws.send(`${event}::${file}`);
 });
 
-ws.on('message', (msg) => (msg === 'backup' ? backup() : false));
+ws.on('message', (msg) => {
+  switch (msg) {
+    case 'backup':
+      backup();
+      break;
+    default:
+      // Inbound JSON
+      try {
+        pool = JSON.parse(msg);
+        break;
+      } catch (error) {
+        return console.error("ws.on('message')", error);
+      }
+  }
+});
+
+// Heroku idle connection override
+setInterval(() => {
+  ws.send('ping');
+}, 10000);
